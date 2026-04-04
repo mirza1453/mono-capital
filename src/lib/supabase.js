@@ -12,7 +12,7 @@ export const supabase = createClient(url, key);
 
 let _db = {
   firmalar: [], sablonlar: [], talepler: [], bildirimler: [],
-  dosyalar: [], ekip: [], mpirofil: null, firma_kullanici: [],
+  dosyalar: [], ekip: [], mpirofil: null, firma_kullanici: [], clientProfiles: [],
 };
 let _subs = [];
 let _rtChannel = null;
@@ -29,6 +29,7 @@ export const notify = () => {
   snap.dosyalar = snap.dosyalar || [];
   snap.ekip = snap.ekip || [];
   snap.firma_kullanici = snap.firma_kullanici || [];
+  snap.clientProfiles = snap.clientProfiles || [];
   _subs.forEach(fn => fn(snap));
 };
 export const getDB = () => _db;
@@ -140,6 +141,13 @@ export async function boot(userId) {
     if (profil?.rol === 'office' && anaFirma) {
       const { data: ekipRaw } = await supabase.from('profiles').select('*').eq('rol', 'office').eq('ana_firma', anaFirma);
       _db.ekip = (ekipRaw || []).map(rowToProfile);
+    }
+
+    // Client profilleri çek (firma_kullanici'daki user'ların ad/eposta bilgisi)
+    const clientIds = [...new Set((_db.firma_kullanici || []).map(fk => fk.user_id))];
+    if (clientIds.length > 0) {
+      const { data: cpRaw } = await supabase.from('profiles').select('*').in('id', clientIds);
+      _db.clientProfiles = (cpRaw || []).map(rowToProfile);
     }
 
     if (_db.sablonlar.length === 0 && profil?.rol === 'office') {
