@@ -62,9 +62,10 @@ function AuthScreen() {
   });
 
   /* ═ Header with back button ═ */
-  const Header = ({title}) => (
+  const Header = ({title,icon}) => (
     <div style={{padding:"12px 16px 10px",borderBottom:`1px solid ${C.outVar}`,display:"flex",alignItems:"center",gap:10}}>
       <button onClick={()=>{setMode('select');setErr('');setEp('');setPw('');setAd('');setFirma('');}} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center"}}><BackArrow/></button>
+      {icon}
       <div style={{fontSize:15,fontWeight:700,color:C.on,fontFamily:F}}>{title}</div>
     </div>
   );
@@ -126,7 +127,7 @@ function AuthScreen() {
     const isKayit = mode === 'officeRegister';
     return (
       <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:C.surf,...W}}>
-        <Header title={isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"}/>
+        <Header title={isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>}/>
         <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20}}>
           <div style={{width:"100%",maxWidth:320}}>
             {isKayit && <TF label="Ad Soyad" value={ad} onChange={setAd} focused={foc==="a"} onFocus={()=>setFoc("a")} onBlur={()=>setFoc("")}/>}
@@ -151,7 +152,7 @@ function AuthScreen() {
   // ═ Mükellef Giriş
   if (mode === 'clientLogin') return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:C.surf,...W}}>
-      <Header title="Mükellef Girişi"/>
+      <Header title="Mükellef Girişi" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}/>
       <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20}}>
         <div style={{width:"100%",maxWidth:320}}>
           <TF label="E-posta" value={ep} onChange={setEp} type="email" focused={foc==="e"} onFocus={()=>setFoc("e")} onBlur={()=>setFoc("")}/>
