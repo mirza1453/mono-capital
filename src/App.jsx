@@ -2,30 +2,40 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import MonoApp from './MonoApp';
 
-// Supabase Auth ile giriş/kayıt ekranları
-const F = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif";
+const F = "'Inter','Segoe UI','Roboto',-apple-system,sans-serif";
 const C = {
-  pri:"#0d47a1",priC:"#d4e5fa",onPri:"#fff",
-  surf:"#f5f5f5",surfMin:"#fff",surfLow:"#fafafa",surfHi:"#eee",surfMax:"#f8f8f8",
-  on:"#1c1b1f",onVar:"#49454f",out:"#79747e",outVar:"#cac4d0",
+  pri:"#0d47a1",priC:"#d1e4ff",onPri:"#fff",onPriC:"#001d36",
+  surf:"#f7f9ff",surfMin:"#fff",surfLow:"#eff2fa",surfHi:"#e0e3ec",surfMax:"#d9dce5",
+  on:"#1a1c20",onVar:"#44474f",out:"#74777f",outVar:"#c4c6d0",
   err:"#b3261e",errC:"#ffdad6",ok:"#1b5e20",okC:"#c8e6c9",
   scrim:"rgba(0,0,0,0.4)"
 };
+const W = {maxWidth:480,margin:"0 auto"};
+
+/* ═ Material TextField ═ */
+function TF({label,value,onChange,type="text",focused,onFocus,onBlur}) {
+  const has = value && value.length > 0;
+  return <div style={{position:"relative",marginBottom:14}}>
+    <label style={{position:"absolute",left:14,zIndex:1,top:(focused||has)?5:14,fontSize:(focused||has)?10:14,color:focused?C.pri:C.onVar,transition:"all 150ms",fontFamily:F,pointerEvents:"none"}}>{label}</label>
+    <input type={type} value={value} onChange={e=>onChange(e.target.value)} onFocus={onFocus} onBlur={onBlur}
+      style={{width:"100%",boxSizing:"border-box",padding:"18px 14px 6px",borderRadius:"4px 4px 0 0",border:"none",borderBottom:`2px solid ${focused?C.pri:C.out}`,background:C.surfMax,color:C.on,fontSize:14,fontFamily:F,outline:"none"}}/>
+  </div>;
+}
+
+/* ═ Back Arrow SVG ═ */
+const BackArrow = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
 
 function AuthScreen() {
-  const [mode, setMode] = useState('splash'); // splash, select, officeLogin, officeRegister, clientLogin
+  const [mode, setMode] = useState('splash');
   const [ep, setEp] = useState('');
   const [pw, setPw] = useState('');
   const [ad, setAd] = useState('');
   const [firma, setFirma] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
-  const [bh, setBH] = useState(false);
+  const [foc, setFoc] = useState('');
 
-  useEffect(() => {
-    const t = setTimeout(() => setMode('select'), 1500);
-    return () => clearTimeout(t);
-  }, []);
+  useEffect(() => { const t = setTimeout(() => setMode('select'), 1500); return () => clearTimeout(t); }, []);
 
   const giris = async () => {
     setErr(''); setLoading(true);
@@ -39,17 +49,29 @@ function AuthScreen() {
     if (rol === 'office' && (!ad.trim() || !firma.trim())) { setErr('Tüm alanları doldurunuz'); return; }
     setErr(''); setLoading(true);
     const { error } = await supabase.auth.signUp({
-      email: ep,
-      password: pw,
+      email: ep, password: pw,
       options: { data: { ad: ad.trim() || ep.split('@')[0], rol, ana_firma: firma.trim() } }
     });
     setLoading(false);
     if (error) setErr(error.message);
   };
 
-  // Splash
+  const btnStyle = (dis) => ({
+    width:"100%",height:44,borderRadius:22,border:"none",background:dis?C.surfHi:C.pri,color:dis?C.out:C.onPri,
+    fontSize:14,fontWeight:600,fontFamily:F,cursor:dis?"default":"pointer",opacity:dis?0.5:1
+  });
+
+  /* ═ Header with back button ═ */
+  const Header = ({title}) => (
+    <div style={{padding:"12px 16px 10px",borderBottom:`1px solid ${C.outVar}`,display:"flex",alignItems:"center",gap:10}}>
+      <button onClick={()=>{setMode('select');setErr('');setEp('');setPw('');setAd('');setFirma('');}} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center"}}><BackArrow/></button>
+      <div style={{fontSize:15,fontWeight:700,color:C.on,fontFamily:F}}>{title}</div>
+    </div>
+  );
+
+  // ═ Splash
   if (mode === 'splash') return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1 0%,#1565c0 50%,#1976d2 100%)",maxWidth:480,margin:"0 auto"}}>
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1 0%,#1565c0 50%,#1976d2 100%)",...W}}>
       <style>{`
         @keyframes logoIn{0%{transform:scale(0.3) translateY(40px);opacity:0}40%{transform:scale(1.08) translateY(-8px);opacity:1}60%{transform:scale(0.95) translateY(2px)}80%{transform:scale(1.02) translateY(-1px)}100%{transform:scale(1) translateY(0)}}
         @keyframes textIn{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
@@ -70,19 +92,9 @@ function AuthScreen() {
     </div>
   );
 
-  const inputStyle = (focused) => ({
-    width:"100%",padding:"12px 14px",borderRadius:8,border:`1.5px solid ${focused ? C.pri : C.outVar}`,
-    background:C.surfMax,color:C.on,fontSize:14,fontFamily:F,outline:"none",marginBottom:12,boxSizing:"border-box"
-  });
-
-  const btnStyle = (dis) => ({
-    width:"100%",height:44,borderRadius:22,border:"none",background:dis?C.surfHi:C.pri,color:dis?C.out:C.onPri,
-    fontSize:14,fontWeight:600,fontFamily:F,cursor:dis?"default":"pointer",opacity:dis?0.5:1
-  });
-
-  // Rol seçimi
+  // ═ Rol Seçimi
   if (mode === 'select') return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:`linear-gradient(160deg,${C.surf} 0%,#c5cae9 100%)`,maxWidth:480,margin:"0 auto"}}>
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:`linear-gradient(160deg,${C.surf} 0%,#c5cae9 100%)`,...W}}>
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
         <div style={{width:80,height:80,borderRadius:20,background:C.pri,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,boxShadow:"0 6px 24px rgba(13,71,161,0.35)"}}>
           <span style={{fontSize:36,fontWeight:800,color:"#fff",fontFamily:F,letterSpacing:-2}}>MC</span>
@@ -109,47 +121,49 @@ function AuthScreen() {
     </div>
   );
 
-  // Müşavir giriş/kayıt
+  // ═ Müşavir Giriş / Kayıt
   if (mode === 'officeLogin' || mode === 'officeRegister') {
     const isKayit = mode === 'officeRegister';
     return (
-      <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf,maxWidth:480,margin:"0 auto"}}>
-        <div style={{width:"100%",display:"flex",alignItems:"center",marginBottom:16}}><button onClick={()=>setMode('select')} style={{background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button></div>
-        <h1 style={{fontSize:22,fontWeight:700,color:C.on,fontFamily:F,margin:"0 0 24px"}}>{isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"}</h1>
-        <div style={{width:"100%",maxWidth:320,background:C.surfLow,borderRadius:20,padding:20}}>
-          {isKayit && <input placeholder="Ad Soyad" value={ad} onChange={e=>setAd(e.target.value)} style={inputStyle()}/>}
-          {isKayit && <input placeholder="Firma Adınız" value={firma} onChange={e=>setFirma(e.target.value)} style={inputStyle()}/>}
-          <input placeholder="E-posta" type="email" value={ep} onChange={e=>setEp(e.target.value)} style={inputStyle()}/>
-          <input placeholder="Şifre" type="password" value={pw} onChange={e=>setPw(e.target.value)} style={inputStyle()}/>
-          {err && <div style={{color:C.err,fontSize:12,fontFamily:F,marginBottom:8}}>{err}</div>}
-          <button onClick={isKayit ? ()=>kayit('office') : giris} disabled={loading} style={btnStyle(loading)}>
-            {loading ? "Yükleniyor..." : isKayit ? "Kayıt Ol" : "Giriş Yap"}
-          </button>
-          <div style={{textAlign:"center",marginTop:14}}>
-            <button onClick={()=>{setMode(isKayit?'officeLogin':'officeRegister');setErr('');}} style={{background:"none",border:"none",color:C.pri,fontSize:12,fontFamily:F,cursor:"pointer",fontWeight:600}}>
-              {isKayit ? "Zaten hesabınız var mı? Giriş" : "Hesabınız yok mu? Kaydolun"}
+      <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:C.surf,...W}}>
+        <Header title={isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"}/>
+        <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20}}>
+          <div style={{width:"100%",maxWidth:320}}>
+            {isKayit && <TF label="Ad Soyad" value={ad} onChange={setAd} focused={foc==="a"} onFocus={()=>setFoc("a")} onBlur={()=>setFoc("")}/>}
+            {isKayit && <TF label="Firma Adınız" value={firma} onChange={setFirma} focused={foc==="f"} onFocus={()=>setFoc("f")} onBlur={()=>setFoc("")}/>}
+            <TF label="E-posta" value={ep} onChange={setEp} type="email" focused={foc==="e"} onFocus={()=>setFoc("e")} onBlur={()=>setFoc("")}/>
+            <TF label="Şifre" value={pw} onChange={setPw} type="password" focused={foc==="p"} onFocus={()=>setFoc("p")} onBlur={()=>setFoc("")}/>
+            {err && <div style={{color:C.err,fontSize:12,fontFamily:F,marginBottom:8}}>{err}</div>}
+            <button onClick={isKayit ? ()=>kayit('office') : giris} disabled={loading} style={btnStyle(loading)}>
+              {loading ? "Yükleniyor..." : isKayit ? "Kayıt Ol" : "Giriş Yap"}
             </button>
+            <div style={{textAlign:"center",marginTop:14}}>
+              <button onClick={()=>{setMode(isKayit?'officeLogin':'officeRegister');setErr('');}} style={{background:"none",border:"none",color:C.pri,fontSize:12,fontFamily:F,cursor:"pointer",fontWeight:600}}>
+                {isKayit ? "Zaten hesabınız var mı? Giriş" : "Hesabınız yok mu? Kaydolun"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Mükellef giriş
+  // ═ Mükellef Giriş
   if (mode === 'clientLogin') return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf,maxWidth:480,margin:"0 auto"}}>
-      <div style={{width:"100%",display:"flex",alignItems:"center",marginBottom:16}}><button onClick={()=>setMode('select')} style={{background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button></div>
-      <h1 style={{fontSize:22,fontWeight:700,color:C.on,fontFamily:F,margin:"0 0 24px"}}>Mükellef Girişi</h1>
-      <div style={{width:"100%",maxWidth:320,background:C.surfLow,borderRadius:20,padding:20}}>
-        <input placeholder="E-posta" type="email" value={ep} onChange={e=>setEp(e.target.value)} style={inputStyle()}/>
-        <input placeholder="Şifre" type="password" value={pw} onChange={e=>setPw(e.target.value)} style={inputStyle()}/>
-        {err && <div style={{color:C.err,fontSize:12,fontFamily:F,marginBottom:8}}>{err}</div>}
-        <button onClick={giris} disabled={loading} style={btnStyle(loading)}>
-          {loading ? "Yükleniyor..." : "Giriş Yap"}
-        </button>
-        <p style={{fontSize:11,color:C.out,textAlign:"center",marginTop:12,fontFamily:F}}>
-          Mükellef hesabı müşaviriniz tarafından oluşturulur
-        </p>
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:C.surf,...W}}>
+      <Header title="Mükellef Girişi"/>
+      <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20}}>
+        <div style={{width:"100%",maxWidth:320}}>
+          <TF label="E-posta" value={ep} onChange={setEp} type="email" focused={foc==="e"} onFocus={()=>setFoc("e")} onBlur={()=>setFoc("")}/>
+          <TF label="Şifre" value={pw} onChange={setPw} type="password" focused={foc==="p"} onFocus={()=>setFoc("p")} onBlur={()=>setFoc("")}/>
+          {err && <div style={{color:C.err,fontSize:12,fontFamily:F,marginBottom:8}}>{err}</div>}
+          <button onClick={giris} disabled={loading} style={btnStyle(loading)}>
+            {loading ? "Yükleniyor..." : "Giriş Yap"}
+          </button>
+          <p style={{fontSize:11,color:C.out,textAlign:"center",marginTop:12,fontFamily:F}}>
+            Mükellef hesabı müşaviriniz tarafından oluşturulur
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -162,25 +176,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setLoading(false); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { setSession(session); });
     return () => subscription.unsubscribe();
   }, []);
 
   if (loading) return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1,#1976d2)",maxWidth:480,margin:"0 auto"}}>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1,#1976d2)",...W}}>
       <div style={{fontSize:36,fontWeight:800,color:"#fff",fontFamily:F}}>MC</div>
     </div>
   );
 
   if (!session) return <AuthScreen/>;
-
-  // Giriş yapıldı - mevcut uygulamayı göster
-  // MonoApp'a session bilgisini geçir
   return <MonoApp session={session} onLogout={()=>supabase.auth.signOut()}/>;
 }
