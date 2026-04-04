@@ -17,7 +17,20 @@ let _db = {
 let _subs = [];
 let _rtChannel = null;
 
-export const notify = () => _subs.forEach(fn => fn({ ..._db }));
+export const notify = () => {
+  const snap = { ..._db };
+  // ozlukDosyalari alias'ı spread'de kaybolur, elle ekle
+  if (!snap.ozlukDosyalari) snap.ozlukDosyalari = snap.dosyalar || [];
+  // null safety
+  snap.firmalar = snap.firmalar || [];
+  snap.sablonlar = snap.sablonlar || [];
+  snap.talepler = snap.talepler || [];
+  snap.bildirimler = snap.bildirimler || [];
+  snap.dosyalar = snap.dosyalar || [];
+  snap.ekip = snap.ekip || [];
+  snap.firma_kullanici = snap.firma_kullanici || [];
+  _subs.forEach(fn => fn(snap));
+};
 export const getDB = () => _db;
 export const subscribe = (fn) => { _subs.push(fn); return () => { _subs = _subs.filter(x => x !== fn); }; };
 
