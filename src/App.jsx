@@ -82,7 +82,7 @@ function AuthScreen() {
 
   // Rol seçimi
   if (mode === 'select') return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:`linear-gradient(160deg,${C.surf} 0%,#c5cae9 100%)`}}>
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:`linear-gradient(160deg,${C.surf} 0%,#c5cae9 100%)`,maxWidth:480,margin:"0 auto"}}>
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
         <div style={{width:80,height:80,borderRadius:20,background:C.pri,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,boxShadow:"0 6px 24px rgba(13,71,161,0.35)"}}>
           <span style={{fontSize:36,fontWeight:800,color:"#fff",fontFamily:F,letterSpacing:-2}}>MC</span>
@@ -114,7 +114,7 @@ function AuthScreen() {
     const isKayit = mode === 'officeRegister';
     return (
       <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf,maxWidth:480,margin:"0 auto"}}>
-        <button onClick={()=>setMode('select')} style={{position:"absolute",top:16,left:16,background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button>
+        <div style={{width:"100%",display:"flex",alignItems:"center",marginBottom:16}}><button onClick={()=>setMode('select')} style={{background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button></div>
         <h1 style={{fontSize:22,fontWeight:700,color:C.on,fontFamily:F,margin:"0 0 24px"}}>{isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"}</h1>
         <div style={{width:"100%",maxWidth:320,background:C.surfLow,borderRadius:20,padding:20}}>
           {isKayit && <input placeholder="Ad Soyad" value={ad} onChange={e=>setAd(e.target.value)} style={inputStyle()}/>}
@@ -138,7 +138,7 @@ function AuthScreen() {
   // Mükellef giriş
   if (mode === 'clientLogin') return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf,maxWidth:480,margin:"0 auto"}}>
-      <button onClick={()=>setMode('select')} style={{position:"absolute",top:16,left:16,background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button>
+      <div style={{width:"100%",display:"flex",alignItems:"center",marginBottom:16}}><button onClick={()=>setMode('select')} style={{background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button></div>
       <h1 style={{fontSize:22,fontWeight:700,color:C.on,fontFamily:F,margin:"0 0 24px"}}>Mükellef Girişi</h1>
       <div style={{width:"100%",maxWidth:320,background:C.surfLow,borderRadius:20,padding:20}}>
         <input placeholder="E-posta" type="email" value={ep} onChange={e=>setEp(e.target.value)} style={inputStyle()}/>
