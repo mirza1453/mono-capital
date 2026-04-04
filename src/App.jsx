@@ -62,11 +62,17 @@ function AuthScreen() {
   });
 
   /* ═ Header with back button ═ */
-  const Header = ({title,icon}) => (
+  const Header = ({title}) => (
     <div style={{padding:"12px 16px 10px",borderBottom:`1px solid ${C.outVar}`,display:"flex",alignItems:"center",gap:10}}>
       <button onClick={()=>{setMode('select');setErr('');setEp('');setPw('');setAd('');setFirma('');}} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center"}}><BackArrow/></button>
-      {icon}
       <div style={{fontSize:15,fontWeight:700,color:C.on,fontFamily:F}}>{title}</div>
+    </div>
+  );
+
+  const FormIcon = ({icon,title}) => (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:24}}>
+      <div style={{width:56,height:56,borderRadius:16,background:C.priC,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}}>{icon}</div>
+      <h1 style={{fontSize:20,fontWeight:700,color:C.on,fontFamily:F,margin:0}}>{title}</h1>
     </div>
   );
 
@@ -127,9 +133,10 @@ function AuthScreen() {
     const isKayit = mode === 'officeRegister';
     return (
       <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:C.surf,...W}}>
-        <Header title={isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>}/>
+        <Header title={isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"}/>
         <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20}}>
           <div style={{width:"100%",maxWidth:320}}>
+            <FormIcon icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>} title={isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"}/>
             {isKayit && <TF label="Ad Soyad" value={ad} onChange={setAd} focused={foc==="a"} onFocus={()=>setFoc("a")} onBlur={()=>setFoc("")}/>}
             {isKayit && <TF label="Firma Adınız" value={firma} onChange={setFirma} focused={foc==="f"} onFocus={()=>setFoc("f")} onBlur={()=>setFoc("")}/>}
             <TF label="E-posta" value={ep} onChange={setEp} type="email" focused={foc==="e"} onFocus={()=>setFoc("e")} onBlur={()=>setFoc("")}/>
@@ -152,9 +159,10 @@ function AuthScreen() {
   // ═ Mükellef Giriş
   if (mode === 'clientLogin') return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:C.surf,...W}}>
-      <Header title="Mükellef Girişi" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}/>
+      <Header title="Mükellef Girişi"/>
       <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20}}>
         <div style={{width:"100%",maxWidth:320}}>
+          <FormIcon icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} title="Mükellef Girişi"/>
           <TF label="E-posta" value={ep} onChange={setEp} type="email" focused={foc==="e"} onFocus={()=>setFoc("e")} onBlur={()=>setFoc("")}/>
           <TF label="Şifre" value={pw} onChange={setPw} type="password" focused={foc==="p"} onFocus={()=>setFoc("p")} onBlur={()=>setFoc("")}/>
           {err && <div style={{color:C.err,fontSize:12,fontFamily:F,marginBottom:8}}>{err}</div>}
