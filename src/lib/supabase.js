@@ -94,12 +94,19 @@ const bildirimToRow = b => ({
   firma_id: b.firmaId || null, talep_id: b.talepId || null, okundu: b.okundu || false,
 });
 
-const rowToDosya = r => ({
-  id: r.id, firmaId: r.firma_id, ad: r.ad, klasor: r.klasor || 'Genel',
-  boyut: r.boyut, storagePath: r.storage_path, ekleyenId: r.ekleyen_id,
-  ekleyen: r.ekleyen, isKlasor: r.is_klasor || false, isPin: r.is_pin || false,
-  pinKey: r.pin_key, tarih: fmtTarih(r.created_at),
-});
+const rowToDosya = r => {
+  const d = {
+    id: r.id, firmaId: r.firma_id, ad: r.ad, klasor: r.klasor || 'Genel',
+    boyut: r.boyut, storagePath: r.storage_path, ekleyenId: r.ekleyen_id,
+    ekleyen: r.ekleyen, isKlasor: r.is_klasor || false, isPin: r.is_pin || false,
+    pinKey: r.pin_key, tarih: fmtTarih(r.created_at),
+  };
+  if (r.storage_path) {
+    const { data } = supabase.storage.from('dosyalar').getPublicUrl(r.storage_path);
+    d.publicUrl = data?.publicUrl || '';
+  }
+  return d;
+};
 const dosyaToRow = d => ({
   firma_id: d.firmaId, ad: d.ad, klasor: d.klasor || 'Genel',
   boyut: d.boyut || null, storage_path: d.storagePath || null,
@@ -336,6 +343,48 @@ export async function markAllBildirimOkundu(hedef, firmaId) {
 }
 
 // ─── DOSYALAR ───
+
+export async function uploadFileToStorage(file, firmaId, klasor, ekleyenId, ekleyen) {
+  const ts = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${firmaId}/${klasor || 'Genel'}/${ts}_${safeName}`;
+  
+  // Supabase Storage'a yükle
+  const { data: upData, error: upError } = await supabase.storage.from('dosyalar').upload(path, file);
+  if (upError) { console.error('[STORAGE] Upload error:', upError); return null; }
+  
+  // Public URL al
+  const { data: urlData } = supabase.storage.from('dosyalar').getPublicUrl(path);
+  const publicUrl = urlData?.publicUrl || '';
+  
+  // Boyut formatla
+  const fmtBoyut = b => { if (!b) return ''; if (b < 1024) return b + 'B'; if (b < 1048576) return (b / 1024).toFixed(1) + 'KB'; return (b / 1048576).toFixed(1) + 'MB'; };
+  
+  // dosyalar tablosuna kaydet
+  const row = {
+    firma_id: firmaId, ad: file.name, klasor: klasor || 'Genel',
+    boyut: fmtBoyut(file.size), storage_path: path,
+    ekleyen_id: ekleyenId || null, ekleyen: ekleyen || null,
+    is_klasor: false, is_pin: false,
+  };
+  const { data, error } = await supabase.from('dosyalar').insert(row).select().single();
+  if (error) { console.error('[STORAGE] DB insert error:', error); return null; }
+  
+  const dosya = { ...rowToDosya(data), publicUrl };
+  _db.dosyalar.push(dosya);
+  notify();
+  return dosya;
+}
+
+export async function insertKlasor(firmaId, klasor, ekleyenId, ekleyen) {
+  const row = { firma_id: firmaId, ad: '.klasor', klasor, boyut: null, storage_path: null, ekleyen_id: ekleyenId, ekleyen, is_klasor: true, is_pin: false };
+  const { data, error } = await supabase.from('dosyalar').insert(row).select().single();
+  if (error) { console.error('[STORAGE] Klasor insert error:', error); return null; }
+  const d = rowToDosya(data);
+  _db.dosyalar.push(d);
+  notify();
+  return d;
+}
 
 export async function insertDosya(d) {
   _db.dosyalar.push(d);

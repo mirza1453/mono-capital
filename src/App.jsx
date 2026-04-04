@@ -49,7 +49,7 @@ function AuthScreen() {
 
   // Splash
   if (mode === 'splash') return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1 0%,#1565c0 50%,#1976d2 100%)"}}>
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1 0%,#1565c0 50%,#1976d2 100%)",maxWidth:480,margin:"0 auto"}}>
       <style>{`
         @keyframes logoIn{0%{transform:scale(0.3) translateY(40px);opacity:0}40%{transform:scale(1.08) translateY(-8px);opacity:1}60%{transform:scale(0.95) translateY(2px)}80%{transform:scale(1.02) translateY(-1px)}100%{transform:scale(1) translateY(0)}}
         @keyframes textIn{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
@@ -113,7 +113,7 @@ function AuthScreen() {
   if (mode === 'officeLogin' || mode === 'officeRegister') {
     const isKayit = mode === 'officeRegister';
     return (
-      <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf}}>
+      <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf,maxWidth:480,margin:"0 auto"}}>
         <button onClick={()=>setMode('select')} style={{position:"absolute",top:16,left:16,background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button>
         <h1 style={{fontSize:22,fontWeight:700,color:C.on,fontFamily:F,margin:"0 0 24px"}}>{isKayit ? "Müşavir Kaydı" : "Müşavir Girişi"}</h1>
         <div style={{width:"100%",maxWidth:320,background:C.surfLow,borderRadius:20,padding:20}}>
@@ -137,7 +137,7 @@ function AuthScreen() {
 
   // Mükellef giriş
   if (mode === 'clientLogin') return (
-    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf}}>
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",padding:20,background:C.surf,maxWidth:480,margin:"0 auto"}}>
       <button onClick={()=>setMode('select')} style={{position:"absolute",top:16,left:16,background:"none",border:"none",cursor:"pointer",color:C.pri,fontSize:13,fontFamily:F,fontWeight:600}}>← Geri</button>
       <h1 style={{fontSize:22,fontWeight:700,color:C.on,fontFamily:F,margin:"0 0 24px"}}>Mükellef Girişi</h1>
       <div style={{width:"100%",maxWidth:320,background:C.surfLow,borderRadius:20,padding:20}}>
@@ -173,7 +173,7 @@ export default function App() {
   }, []);
 
   if (loading) return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1,#1976d2)"}}>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(180deg,#0d47a1,#1976d2)",maxWidth:480,margin:"0 auto"}}>
       <div style={{fontSize:36,fontWeight:800,color:"#fff",fontFamily:F}}>MC</div>
     </div>
   );
