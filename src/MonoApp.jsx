@@ -90,8 +90,12 @@ const mut = (fn) => {
           const { data, error } = await supabase.from('talepler').insert(row).select().single();
           if (error) console.error('[SYNC] INSERT talep ERROR:', error);
           if (data) {
+            // Temp ID'li talebi bul ve UUID ile güncelle
             const i = db.talepler.findIndex(x => x.id === t.id);
-            if (i >= 0) { db.talepler[i].id = data.id; db.talepler[i].tarih = db.talepler[i].tarih || fmtTarih(new Date()); }
+            if (i >= 0) {
+              db.talepler[i] = { ...db.talepler[i], id: data.id, tarih: db.talepler[i].tarih || fmtTarihLocal(new Date()) };
+              notify();
+            }
           }
         } else if (prevTalepSnap.has(t.id) && prevTalepSnap.get(t.id) !== JSON.stringify(t)) {
           // UPDATE
@@ -131,7 +135,7 @@ const mut = (fn) => {
           console.log('[SYNC] INSERT firma:', row);
           const { data, error } = await supabase.from('firmalar').insert(row).select().single();
           if (error) console.error('[SYNC] INSERT firma ERROR:', error);
-          if (data) { const i = db.firmalar.findIndex(x => x.id === f.id); if (i >= 0) db.firmalar[i].id = data.id; }
+          if (data) { const i = db.firmalar.findIndex(x => x.id === f.id); if (i >= 0) { db.firmalar[i].id = data.id; notify(); } }
         } else if (prevFirmaSnap.has(f.id) && prevFirmaSnap.get(f.id) !== JSON.stringify(f)) {
           console.log('[SYNC] UPDATE firma:', f.id);
           const { error } = await supabase.from('firmalar').update({ ad: f.ad, vkn: f.vkn }).eq('id', f.id);
@@ -152,7 +156,7 @@ const mut = (fn) => {
           console.log('[SYNC] INSERT sablon:', row);
           const { data, error } = await supabase.from('sablonlar').insert(row).select().single();
           if (error) console.error('[SYNC] INSERT sablon ERROR:', error);
-          if (data) { const i = db.sablonlar.findIndex(x => x.id === s.id); if (i >= 0) db.sablonlar[i].id = data.id; }
+          if (data) { const i = db.sablonlar.findIndex(x => x.id === s.id); if (i >= 0) { db.sablonlar[i].id = data.id; notify(); } }
         } else if (prevSablonSnap.has(s.id) && prevSablonSnap.get(s.id) !== JSON.stringify(s)) {
           console.log('[SYNC] UPDATE sablon:', s.id);
           await supabase.from('sablonlar').update({ ad: s.ad, alanlar: s.alanlar, kontrol_sablonu: s.kontrolSablonu, aciklama_sablonu: s.aciklamaSablonu, bildirim_sablonu: s.bildirimSablonu, baslik_format: s.baslikFormat, baslik_sep: s.baslikSep }).eq('id', s.id);
@@ -312,7 +316,7 @@ function OfficePanel({user,onCikis}){
     const getBildirimMesaj=()=>{const sab2=db.sablonlar.find(s=>s.id===t.sablonId);if(sab2?.bildirimSablonu){let m=sab2.bildirimSablonu.replace(/\{firmaAd\}/g,firma?.ad||"").replace(/\{kisi\}/g,t.kisi||"").replace(/\{sablonAd\}/g,t.sablonAd||"");if(t.alanlar)t.alanlar.forEach(a=>{if(a.ad&&a.deger&&typeof a.deger==="string")m=m.replace(new RegExp("\\{"+a.ad+"\\}","g"),a.deger);});return m;}return `${firma?.ad||""} ${t.sablonAd||""} işlemi tamamlanmıştır.`;};
     const durumG=d=>{sLDurum(d);};
     const sonucSil=idx=>{sLSonuc(p=>p.filter((_,i)=>i!==idx));};
-    const sonucE=async()=>{let nr;if(rTip==="dosya"){if(rDosyalar.length===0)return;const uploaded=[];for(const file of rDosyalar){const res=await uploadFileToStorage(file,t.firmaId||"genel","Sonuclar",user.id,user.ad);if(res)uploaded.push({name:file.name,publicUrl:res.publicUrl||""});}nr={tip:"dosya",deger:uploaded,tarih:simdiTarih()};}else{if(!rVal.trim())return;nr={tip:"metin",deger:rVal,tarih:simdiTarih()};}sLSonuc(p=>[...p,nr]);sRV("");sRD([]);};
+    const sonucE=async()=>{let nr;if(rTip==="dosya"){if(rDosyalar.length===0)return;const items=[];for(const file of rDosyalar){const ts=Date.now();const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');const path=`sonuclar/${t.id}/${ts}_${safeName}`;const{error:upErr}=await supabase.storage.from('dosyalar').upload(path,file);if(!upErr){const{data:urlD}=supabase.storage.from('dosyalar').getPublicUrl(path);items.push({name:file.name,publicUrl:urlD?.publicUrl||""});}else{console.error('[SONUC] Upload error:',upErr);items.push({name:file.name});}}nr={tip:"dosya",deger:items,tarih:simdiTarih()};}else{if(!rVal.trim())return;nr={tip:"metin",deger:rVal,tarih:simdiTarih()};}sLSonuc(p=>[...p,nr]);sRV("");sRD([]);};
     const notKaydet=()=>{mut(x=>{const y=x.talepler.find(z=>z.id===t.id);if(y){y.musavirNot=mNot;y.musavirCheckler=mCheckler;}});};
     const checkEkle=()=>{if(!yeniCheck.trim())return;sMC(p=>[...p,{id:"mc"+Date.now(),ad:yeniCheck.trim(),tamam:false}]);sYC("");};
     const checkToggle=id=>{sMC(p=>p.map(c=>c.id===id?{...c,tamam:!c.tamam}:c));};

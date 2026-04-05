@@ -182,7 +182,16 @@ export function startRealtime() {
   if (_rtChannel) return;
   _rtChannel = supabase.channel('mc-rt')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'talepler' }, p => {
-      if (p.eventType === 'INSERT') { const t = rowToTalep(p.new); if (!_db.talepler.find(x => x.id === t.id)) { _db.talepler.unshift(t); notify(); } }
+      if (p.eventType === 'INSERT') {
+        const t = rowToTalep(p.new);
+        // UUID ile zaten varsa atla
+        if (_db.talepler.find(x => x.id === t.id)) return;
+        // Temp ID'li (t ile başlayan) aynı talep varsa güncelle
+        const tempIdx = _db.talepler.findIndex(x => typeof x.id === 'string' && x.id.startsWith('t') && x.sablonAd === t.sablonAd && x.olusturan === t.olusturan);
+        if (tempIdx >= 0) { _db.talepler[tempIdx] = t; }
+        else { _db.talepler.unshift(t); }
+        notify();
+      }
       else if (p.eventType === 'UPDATE') { const i = _db.talepler.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.talepler[i] = rowToTalep(p.new); notify(); } }
       else if (p.eventType === 'DELETE') { _db.talepler = _db.talepler.filter(x => x.id !== p.old.id); notify(); }
     })
