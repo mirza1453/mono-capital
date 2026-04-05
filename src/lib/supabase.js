@@ -17,7 +17,11 @@ let _db = {
 let _subs = [];
 let _rtChannel = null;
 
+// Silinen ID'leri track et — realtime geri eklemesin
+const _deletedTalepIds = new Set();
+
 let _notifyTimer = null;
+let _lastSnapRef = null;
 export const notify = () => {
   if (_notifyTimer) clearTimeout(_notifyTimer);
   _notifyTimer = setTimeout(() => {
@@ -31,8 +35,9 @@ export const notify = () => {
     snap.ekip = snap.ekip || [];
     snap.firma_kullanici = snap.firma_kullanici || [];
     snap.clientProfiles = snap.clientProfiles || [];
+    _lastSnapRef = snap;
     _subs.forEach(fn => fn(snap));
-  }, 50);
+  }, 80);
 };
 // Immediate notify for critical updates (boot etc)
 export const notifyNow = () => {
@@ -119,11 +124,22 @@ const rowToDosya = r => {
     pinKey: r.pin_key, tarih: fmtTarih(r.created_at),
   };
   if (r.storage_path) {
+    // Public URL oluştur — bucket public ise çalışır
     const { data } = supabase.storage.from('dosyalar').getPublicUrl(r.storage_path);
     d.publicUrl = data?.publicUrl || '';
+    // Ayrıca signed URL'i lazy olarak al (bucket private olabilir)
+    d._storagePath = r.storage_path;
   }
   return d;
 };
+
+// Dosya için signed URL al (private bucket desteği)
+export async function getSignedUrl(storagePath, expiresIn = 3600) {
+  if (!storagePath) return '';
+  const { data, error } = await supabase.storage.from('dosyalar').createSignedUrl(storagePath, expiresIn);
+  if (error) { console.error('[STORAGE] Signed URL error:', error); return ''; }
+  return data?.signedUrl || '';
+}
 const dosyaToRow = d => ({
   firma_id: d.firmaId, ad: d.ad, klasor: d.klasor || 'Genel',
   boyut: d.boyut || null, storage_path: d.storagePath || null,
@@ -201,14 +217,27 @@ export function startRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'talepler' }, p => {
       if (p.eventType === 'INSERT') {
         const t = rowToTalep(p.new);
+        if (_deletedTalepIds.has(t.id)) return; // silindi, geri ekleme
         if (_db.talepler.find(x => x.id === t.id)) return; // zaten var
         // Temp ID'li eşleşme: aynı sablon_ad + aynı olusturan_id + 5sn içinde
         const tempIdx = _db.talepler.findIndex(x => typeof x.id === 'string' && x.id.startsWith('t') && x.sablonAd === t.sablonAd && (x.odId === t.odId || x.olusturanId === t.olusturanId));
         if (tempIdx >= 0) { _db.talepler[tempIdx] = t; } else { _db.talepler.unshift(t); }
         notify();
       }
-      else if (p.eventType === 'UPDATE') { const i = _db.talepler.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.talepler[i] = rowToTalep(p.new); notify(); } }
-      else if (p.eventType === 'DELETE') { _db.talepler = _db.talepler.filter(x => x.id !== p.old.id); notify(); }
+      else if (p.eventType === 'UPDATE') {
+        if (_deletedTalepIds.has(p.new.id)) return; // silindi, güncelleme
+        const i = _db.talepler.findIndex(x => x.id === p.new.id);
+        if (i >= 0) {
+          // Sadece gerçekten değişiklik varsa notify et
+          const existing = _db.talepler[i];
+          const updated = rowToTalep(p.new);
+          if (JSON.stringify(existing) !== JSON.stringify(updated)) {
+            _db.talepler[i] = updated;
+            notify();
+          }
+        }
+      }
+      else if (p.eventType === 'DELETE') { _db.talepler = _db.talepler.filter(x => x.id !== p.old.id); _deletedTalepIds.add(p.old.id); notify(); }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler' }, p => {
       if (p.eventType === 'INSERT') { const b = rowToBildirim(p.new); if (!_db.bildirimler.find(x => x.id === b.id)) { _db.bildirimler.unshift(b); notify(); } }
@@ -255,15 +284,20 @@ export async function updateTalep(id, changes) {
 }
 
 export async function deleteTalep(id) {
+  _deletedTalepIds.add(id);
   _db.talepler = _db.talepler.filter(x => x.id !== id);
   notify();
-  await supabase.from('talepler').delete().eq('id', id);
+  if (id && typeof id !== 'string' || (typeof id === 'string' && !id.startsWith('t'))) {
+    await supabase.from('talepler').delete().eq('id', id);
+  }
 }
 
 export async function deleteTaleplerToplu(ids) {
+  ids.forEach(id => _deletedTalepIds.add(id));
   _db.talepler = _db.talepler.filter(x => !ids.includes(x.id));
   notify();
-  await supabase.from('talepler').delete().in('id', ids);
+  const realIds = ids.filter(id => typeof id !== 'string' || !id.startsWith('t'));
+  if (realIds.length) await supabase.from('talepler').delete().in('id', realIds);
 }
 
 export async function arsivTaleplerToplu(ids, arsiv = true) {
