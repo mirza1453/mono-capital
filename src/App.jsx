@@ -109,20 +109,20 @@ function AuthScreen() {
         <h1 style={{fontSize:26,fontWeight:800,color:C.on,fontFamily:F,margin:"0 0 4px"}}>Mono Capital</h1>
         <p style={{fontSize:13,color:C.out,fontFamily:F,margin:0,textAlign:"center",maxWidth:260}}>İş Yönetimi Platformu</p>
       </div>
-      <div style={{padding:"0 24px 40px",display:"flex",flexDirection:"column",gap:12,maxWidth:400,width:"100%",margin:"0 auto"}}>
-        <button onClick={()=>setMode('officeLogin')} style={{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:16,border:"none",background:C.pri,cursor:"pointer",fontFamily:F,boxShadow:"0 2px 12px rgba(13,71,161,0.3)"}}>
-          <div style={{width:48,height:48,borderRadius:14,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      <div style={{padding:"0 24px 40px",display:"flex",flexDirection:"column",gap:14,maxWidth:400,width:"100%",margin:"0 auto",marginTop:-40}}>
+        <button onClick={()=>setMode('officeLogin')} style={{display:"flex",alignItems:"center",gap:16,padding:"20px 22px",borderRadius:18,border:"none",background:C.pri,cursor:"pointer",fontFamily:F,boxShadow:"0 4px 16px rgba(13,71,161,0.35)"}}>
+          <div style={{width:52,height:52,borderRadius:16,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
           </div>
-          <div style={{flex:1,textAlign:"left"}}><div style={{fontSize:15,fontWeight:600,color:"#fff"}}>Müşavir Girişi</div><div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:2}}>Mali müşavir / muhasebeci</div></div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          <div style={{flex:1,textAlign:"left"}}><div style={{fontSize:16,fontWeight:700,color:"#fff"}}>Müşavir Girişi</div><div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:3}}>Mali müşavir / muhasebeci</div></div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
         </button>
-        <button onClick={()=>setMode('clientLogin')} style={{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:16,border:`1px solid ${C.outVar}`,background:C.surfMin,cursor:"pointer",fontFamily:F}}>
-          <div style={{width:48,height:48,borderRadius:14,background:C.priC,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <button onClick={()=>setMode('clientLogin')} style={{display:"flex",alignItems:"center",gap:16,padding:"20px 22px",borderRadius:18,border:`1.5px solid ${C.outVar}`,background:C.surfMin,cursor:"pointer",fontFamily:F}}>
+          <div style={{width:52,height:52,borderRadius:16,background:C.priC,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.pri} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
-          <div style={{flex:1,textAlign:"left"}}><div style={{fontSize:15,fontWeight:600,color:C.on}}>Mükellef Girişi</div><div style={{fontSize:13,color:C.out,marginTop:2}}>Firma sahibi / yetkili</div></div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.outVar} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          <div style={{flex:1,textAlign:"left"}}><div style={{fontSize:16,fontWeight:700,color:C.on}}>Mükellef Girişi</div><div style={{fontSize:13,color:C.out,marginTop:3}}>Firma sahibi / yetkili</div></div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.outVar} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
         </button>
       </div>
     </div>
