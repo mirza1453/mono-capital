@@ -17,11 +17,28 @@ let _db = {
 let _subs = [];
 let _rtChannel = null;
 
+let _notifyTimer = null;
 export const notify = () => {
+  if (_notifyTimer) clearTimeout(_notifyTimer);
+  _notifyTimer = setTimeout(() => {
+    const snap = { ..._db };
+    if (!snap.ozlukDosyalari) snap.ozlukDosyalari = snap.dosyalar || [];
+    snap.firmalar = snap.firmalar || [];
+    snap.sablonlar = snap.sablonlar || [];
+    snap.talepler = snap.talepler || [];
+    snap.bildirimler = snap.bildirimler || [];
+    snap.dosyalar = snap.dosyalar || [];
+    snap.ekip = snap.ekip || [];
+    snap.firma_kullanici = snap.firma_kullanici || [];
+    snap.clientProfiles = snap.clientProfiles || [];
+    _subs.forEach(fn => fn(snap));
+  }, 50);
+};
+// Immediate notify for critical updates (boot etc)
+export const notifyNow = () => {
+  if (_notifyTimer) clearTimeout(_notifyTimer);
   const snap = { ..._db };
-  // ozlukDosyalari alias'ı spread'de kaybolur, elle ekle
   if (!snap.ozlukDosyalari) snap.ozlukDosyalari = snap.dosyalar || [];
-  // null safety
   snap.firmalar = snap.firmalar || [];
   snap.sablonlar = snap.sablonlar || [];
   snap.talepler = snap.talepler || [];
@@ -161,7 +178,7 @@ export async function boot(userId) {
       await seedDefaults(userId);
     }
   } catch (e) { console.error('Boot error:', e); }
-  notify();
+  notifyNow();
 }
 
 async function seedDefaults(uid) {
@@ -184,12 +201,10 @@ export function startRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'talepler' }, p => {
       if (p.eventType === 'INSERT') {
         const t = rowToTalep(p.new);
-        // UUID ile zaten varsa atla
-        if (_db.talepler.find(x => x.id === t.id)) return;
-        // Temp ID'li (t ile başlayan) aynı talep varsa güncelle
-        const tempIdx = _db.talepler.findIndex(x => typeof x.id === 'string' && x.id.startsWith('t') && x.sablonAd === t.sablonAd && x.olusturan === t.olusturan);
-        if (tempIdx >= 0) { _db.talepler[tempIdx] = t; }
-        else { _db.talepler.unshift(t); }
+        if (_db.talepler.find(x => x.id === t.id)) return; // zaten var
+        // Temp ID'li eşleşme: aynı sablon_ad + aynı olusturan_id + 5sn içinde
+        const tempIdx = _db.talepler.findIndex(x => typeof x.id === 'string' && x.id.startsWith('t') && x.sablonAd === t.sablonAd && (x.odId === t.odId || x.olusturanId === t.olusturanId));
+        if (tempIdx >= 0) { _db.talepler[tempIdx] = t; } else { _db.talepler.unshift(t); }
         notify();
       }
       else if (p.eventType === 'UPDATE') { const i = _db.talepler.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.talepler[i] = rowToTalep(p.new); notify(); } }
