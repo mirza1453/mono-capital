@@ -16,15 +16,17 @@ let _db = {
 };
 let _subs = [];
 let _rtChannel = null;
-
-// Silinen ID'leri track et — realtime geri eklemesin
-const _deletedTalepIds = new Set();
+const _deletedIds = new Set();
+let _rtMuted = false;
+export function muteRealtime() { _rtMuted = true; }
+export function unmuteRealtime() { setTimeout(() => { _rtMuted = false; }, 600); }
 
 let _notifyTimer = null;
-let _lastSnapRef = null;
+let _notifyVersion = 0;
 export const notify = () => {
   if (_notifyTimer) clearTimeout(_notifyTimer);
   _notifyTimer = setTimeout(() => {
+    _notifyVersion++;
     const snap = { ..._db };
     if (!snap.ozlukDosyalari) snap.ozlukDosyalari = snap.dosyalar || [];
     snap.firmalar = snap.firmalar || [];
@@ -35,9 +37,9 @@ export const notify = () => {
     snap.ekip = snap.ekip || [];
     snap.firma_kullanici = snap.firma_kullanici || [];
     snap.clientProfiles = snap.clientProfiles || [];
-    _lastSnapRef = snap;
+    snap._v = _notifyVersion;
     _subs.forEach(fn => fn(snap));
-  }, 80);
+  }, 60);
 };
 // Immediate notify for critical updates (boot etc)
 export const notifyNow = () => {
@@ -124,22 +126,11 @@ const rowToDosya = r => {
     pinKey: r.pin_key, tarih: fmtTarih(r.created_at),
   };
   if (r.storage_path) {
-    // Public URL oluştur — bucket public ise çalışır
     const { data } = supabase.storage.from('dosyalar').getPublicUrl(r.storage_path);
     d.publicUrl = data?.publicUrl || '';
-    // Ayrıca signed URL'i lazy olarak al (bucket private olabilir)
-    d._storagePath = r.storage_path;
   }
   return d;
 };
-
-// Dosya için signed URL al (private bucket desteği)
-export async function getSignedUrl(storagePath, expiresIn = 3600) {
-  if (!storagePath) return '';
-  const { data, error } = await supabase.storage.from('dosyalar').createSignedUrl(storagePath, expiresIn);
-  if (error) { console.error('[STORAGE] Signed URL error:', error); return ''; }
-  return data?.signedUrl || '';
-}
 const dosyaToRow = d => ({
   firma_id: d.firmaId, ad: d.ad, klasor: d.klasor || 'Genel',
   boyut: d.boyut || null, storage_path: d.storagePath || null,
@@ -161,10 +152,20 @@ export async function boot(userId) {
     const { data: profil } = await supabase.from('profiles').select('*').eq('id', userId).single();
     _db.mpirofil = profil ? rowToProfile(profil) : null;
     const anaFirma = profil?.ana_firma;
+    const rol = profil?.rol;
 
+    // Önce ekip listesini çek (aynı ana_firma'daki tüm office kullanıcıları)
+    let ekipIds = [userId];
+    if (rol === 'office' && anaFirma) {
+      const { data: ekipRaw } = await supabase.from('profiles').select('*').eq('rol', 'office').eq('ana_firma', anaFirma);
+      _db.ekip = (ekipRaw || []).map(rowToProfile);
+      ekipIds = _db.ekip.map(e => e.id);
+    }
+
+    // Firmalar ve şablonlar: ekipteki herkesin oluşturduklarını çek
     const [firmR, sabR, talR, bilR, dosR, fkR] = await Promise.all([
-      supabase.from('firmalar').select('*'),
-      supabase.from('sablonlar').select('*'),
+      supabase.from('firmalar').select('*').in('office_user_id', ekipIds),
+      supabase.from('sablonlar').select('*').in('office_user_id', ekipIds),
       supabase.from('talepler').select('*').order('created_at', { ascending: false }),
       supabase.from('bildirimler').select('*').order('created_at', { ascending: false }),
       supabase.from('dosyalar').select('*'),
@@ -178,19 +179,14 @@ export async function boot(userId) {
     _db.dosyalar = (dosR.data || []).map(rowToDosya);
     _db.firma_kullanici = fkR.data || [];
 
-    if (profil?.rol === 'office' && anaFirma) {
-      const { data: ekipRaw } = await supabase.from('profiles').select('*').eq('rol', 'office').eq('ana_firma', anaFirma);
-      _db.ekip = (ekipRaw || []).map(rowToProfile);
-    }
-
     // Client profilleri çek (firma_kullanici'daki user'ların ad/eposta bilgisi)
-    const clientIds = [...new Set((_db.firma_kullanici || []).map(fk => fk.user_id))];
+    const clientIds = [...new Set((_db.firma_kullanici || []).filter(fk => _db.firmalar.some(f => f.id === fk.firma_id)).map(fk => fk.user_id))];
     if (clientIds.length > 0) {
       const { data: cpRaw } = await supabase.from('profiles').select('*').in('id', clientIds);
       _db.clientProfiles = (cpRaw || []).map(rowToProfile);
     }
 
-    if (_db.sablonlar.length === 0 && profil?.rol === 'office') {
+    if (_db.sablonlar.length === 0 && rol === 'office') {
       await seedDefaults(userId);
     }
   } catch (e) { console.error('Boot error:', e); }
@@ -215,35 +211,29 @@ export function startRealtime() {
   if (_rtChannel) return;
   _rtChannel = supabase.channel('mc-rt')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'talepler' }, p => {
+      if (_rtMuted) return;
       if (p.eventType === 'INSERT') {
         const t = rowToTalep(p.new);
-        if (_deletedTalepIds.has(t.id)) return; // silindi, geri ekleme
-        if (_db.talepler.find(x => x.id === t.id)) return; // zaten var
-        // Temp ID'li eşleşme: aynı sablon_ad + aynı olusturan_id + 5sn içinde
+        if (_deletedIds.has(t.id)) return;
+        if (_db.talepler.find(x => x.id === t.id)) return;
         const tempIdx = _db.talepler.findIndex(x => typeof x.id === 'string' && x.id.startsWith('t') && x.sablonAd === t.sablonAd && (x.odId === t.odId || x.olusturanId === t.olusturanId));
         if (tempIdx >= 0) { _db.talepler[tempIdx] = t; } else { _db.talepler.unshift(t); }
         notify();
       }
       else if (p.eventType === 'UPDATE') {
-        if (_deletedTalepIds.has(p.new.id)) return; // silindi, güncelleme
+        if (_deletedIds.has(p.new.id)) return;
         const i = _db.talepler.findIndex(x => x.id === p.new.id);
-        if (i >= 0) {
-          // Sadece gerçekten değişiklik varsa notify et
-          const existing = _db.talepler[i];
-          const updated = rowToTalep(p.new);
-          if (JSON.stringify(existing) !== JSON.stringify(updated)) {
-            _db.talepler[i] = updated;
-            notify();
-          }
-        }
+        if (i >= 0) { _db.talepler[i] = rowToTalep(p.new); notify(); }
       }
-      else if (p.eventType === 'DELETE') { _db.talepler = _db.talepler.filter(x => x.id !== p.old.id); _deletedTalepIds.add(p.old.id); notify(); }
+      else if (p.eventType === 'DELETE') { _deletedIds.add(p.old.id); _db.talepler = _db.talepler.filter(x => x.id !== p.old.id); notify(); }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler' }, p => {
+      if (_rtMuted) return;
       if (p.eventType === 'INSERT') { const b = rowToBildirim(p.new); if (!_db.bildirimler.find(x => x.id === b.id)) { _db.bildirimler.unshift(b); notify(); } }
       else if (p.eventType === 'UPDATE') { const i = _db.bildirimler.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.bildirimler[i] = rowToBildirim(p.new); notify(); } }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'dosyalar' }, p => {
+      if (_rtMuted) return;
       if (p.eventType === 'INSERT') { const d = rowToDosya(p.new); if (!_db.dosyalar.find(x => x.id === d.id)) { _db.dosyalar.push(d); notify(); } }
       else if (p.eventType === 'UPDATE') { const i = _db.dosyalar.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.dosyalar[i] = rowToDosya(p.new); notify(); } }
       else if (p.eventType === 'DELETE') { _db.dosyalar = _db.dosyalar.filter(x => x.id !== p.old.id); notify(); }
@@ -284,19 +274,19 @@ export async function updateTalep(id, changes) {
 }
 
 export async function deleteTalep(id) {
-  _deletedTalepIds.add(id);
+  _deletedIds.add(id);
   _db.talepler = _db.talepler.filter(x => x.id !== id);
   notify();
-  if (id && typeof id !== 'string' || (typeof id === 'string' && !id.startsWith('t'))) {
+  if (typeof id === 'number' || (typeof id === 'string' && !id.startsWith('t'))) {
     await supabase.from('talepler').delete().eq('id', id);
   }
 }
 
 export async function deleteTaleplerToplu(ids) {
-  ids.forEach(id => _deletedTalepIds.add(id));
+  ids.forEach(id => _deletedIds.add(id));
   _db.talepler = _db.talepler.filter(x => !ids.includes(x.id));
   notify();
-  const realIds = ids.filter(id => typeof id !== 'string' || !id.startsWith('t'));
+  const realIds = ids.filter(id => typeof id === 'number' || (typeof id === 'string' && !id.startsWith('t')));
   if (realIds.length) await supabase.from('talepler').delete().in('id', realIds);
 }
 
@@ -547,3 +537,20 @@ Object.defineProperty(_db, 'ozlukDosyalari', {
   set(v) { this.dosyalar = v; },
   enumerable: false,
 });
+
+/* ═══════════════════════════════════════
+   Storage URL helper — signed URL (private bucket)
+═══════════════════════════════════════ */
+const _signedCache = new Map();
+export async function getFileUrl(storagePath) {
+  if (!storagePath) return '';
+  const cached = _signedCache.get(storagePath);
+  if (cached && Date.now() - cached.ts < 300000) return cached.url;
+  const { data, error } = await supabase.storage.from('dosyalar').createSignedUrl(storagePath, 3600);
+  if (!error && data?.signedUrl) {
+    _signedCache.set(storagePath, { url: data.signedUrl, ts: Date.now() });
+    return data.signedUrl;
+  }
+  const { data: pub } = supabase.storage.from('dosyalar').getPublicUrl(storagePath);
+  return pub?.publicUrl || '';
+}
