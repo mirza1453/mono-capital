@@ -15,18 +15,16 @@ let _db = {
   dosyalar: [], ekip: [], mpirofil: null, firma_kullanici: [], clientProfiles: [],
 };
 let _subs = [];
-let _rtChannel = null;
 const _deletedIds = new Set();
 let _rtMuted = false;
 export function muteRealtime() { _rtMuted = true; }
-export function unmuteRealtime() { setTimeout(() => { _rtMuted = false; }, 600); }
+export function unmuteRealtime() { setTimeout(() => { _rtMuted = false; }, 800); }
+let _rtChannel = null;
 
 let _notifyTimer = null;
-let _notifyVersion = 0;
 export const notify = () => {
   if (_notifyTimer) clearTimeout(_notifyTimer);
   _notifyTimer = setTimeout(() => {
-    _notifyVersion++;
     const snap = { ..._db };
     if (!snap.ozlukDosyalari) snap.ozlukDosyalari = snap.dosyalar || [];
     snap.firmalar = snap.firmalar || [];
@@ -37,9 +35,8 @@ export const notify = () => {
     snap.ekip = snap.ekip || [];
     snap.firma_kullanici = snap.firma_kullanici || [];
     snap.clientProfiles = snap.clientProfiles || [];
-    snap._v = _notifyVersion;
-    _subs.forEach(fn => fn(snap));
-  }, 60);
+    snap._v = Date.now(); _subs.forEach(fn => fn(snap));
+  }, 80);
 };
 // Immediate notify for critical updates (boot etc)
 export const notifyNow = () => {
@@ -54,7 +51,7 @@ export const notifyNow = () => {
   snap.ekip = snap.ekip || [];
   snap.firma_kullanici = snap.firma_kullanici || [];
   snap.clientProfiles = snap.clientProfiles || [];
-  _subs.forEach(fn => fn(snap));
+  snap._v = Date.now(); _subs.forEach(fn => fn(snap));
 };
 export const getDB = () => _db;
 export const subscribe = (fn) => { _subs.push(fn); return () => { _subs = _subs.filter(x => x !== fn); }; };
@@ -152,17 +149,15 @@ export async function boot(userId) {
     const { data: profil } = await supabase.from('profiles').select('*').eq('id', userId).single();
     _db.mpirofil = profil ? rowToProfile(profil) : null;
     const anaFirma = profil?.ana_firma;
-    const rol = profil?.rol;
 
-    // Önce ekip listesini çek (aynı ana_firma'daki tüm office kullanıcıları)
+    // Önce ekip listesini çek
     let ekipIds = [userId];
-    if (rol === 'office' && anaFirma) {
+    if (profil?.rol === 'office' && anaFirma) {
       const { data: ekipRaw } = await supabase.from('profiles').select('*').eq('rol', 'office').eq('ana_firma', anaFirma);
       _db.ekip = (ekipRaw || []).map(rowToProfile);
       ekipIds = _db.ekip.map(e => e.id);
     }
 
-    // Firmalar ve şablonlar: ekipteki herkesin oluşturduklarını çek
     const [firmR, sabR, talR, bilR, dosR, fkR] = await Promise.all([
       supabase.from('firmalar').select('*').in('office_user_id', ekipIds),
       supabase.from('sablonlar').select('*').in('office_user_id', ekipIds),
@@ -180,13 +175,13 @@ export async function boot(userId) {
     _db.firma_kullanici = fkR.data || [];
 
     // Client profilleri çek (firma_kullanici'daki user'ların ad/eposta bilgisi)
-    const clientIds = [...new Set((_db.firma_kullanici || []).filter(fk => _db.firmalar.some(f => f.id === fk.firma_id)).map(fk => fk.user_id))];
+    const clientIds = [...new Set((_db.firma_kullanici || []).map(fk => fk.user_id))];
     if (clientIds.length > 0) {
       const { data: cpRaw } = await supabase.from('profiles').select('*').in('id', clientIds);
       _db.clientProfiles = (cpRaw || []).map(rowToProfile);
     }
 
-    if (_db.sablonlar.length === 0 && rol === 'office') {
+    if (_db.sablonlar.length === 0 && profil?.rol === 'office') {
       await seedDefaults(userId);
     }
   } catch (e) { console.error('Boot error:', e); }
@@ -220,11 +215,7 @@ export function startRealtime() {
         if (tempIdx >= 0) { _db.talepler[tempIdx] = t; } else { _db.talepler.unshift(t); }
         notify();
       }
-      else if (p.eventType === 'UPDATE') {
-        if (_deletedIds.has(p.new.id)) return;
-        const i = _db.talepler.findIndex(x => x.id === p.new.id);
-        if (i >= 0) { _db.talepler[i] = rowToTalep(p.new); notify(); }
-      }
+      else if (p.eventType === 'UPDATE') { if (_deletedIds.has(p.new.id)) return; const i = _db.talepler.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.talepler[i] = rowToTalep(p.new); notify(); } }
       else if (p.eventType === 'DELETE') { _deletedIds.add(p.old.id); _db.talepler = _db.talepler.filter(x => x.id !== p.old.id); notify(); }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler' }, p => {
@@ -538,9 +529,7 @@ Object.defineProperty(_db, 'ozlukDosyalari', {
   enumerable: false,
 });
 
-/* ═══════════════════════════════════════
-   Storage URL helper — signed URL (private bucket)
-═══════════════════════════════════════ */
+/* ═ Storage URL helper — signed URL (private bucket) ═ */
 const _signedCache = new Map();
 export async function getFileUrl(storagePath) {
   if (!storagePath) return '';
