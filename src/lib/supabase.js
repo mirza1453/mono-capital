@@ -79,7 +79,7 @@ const rowToTalep = r => ({
 });
 
 const talepToRow = t => ({
-  firma_id: t.firmaId, olusturan_id: t.olusturanId || t.odId,
+  firma_id: (t.firmaId && t.firmaId !== 'genel') ? t.firmaId : null, olusturan_id: t.olusturanId || t.odId,
   olusturan: t.olusturan, atanan_id: t.atananId || null,
   kisi: t.kisi || null, sablon_id: t.sablonId || null,
   sablon_ad: t.sablonAd, alanlar: t.alanlar || [], durum: t.durum,
