@@ -16,6 +16,7 @@ let _db = {
 };
 let _subs = [];
 const _deletedIds = new Set();
+const _deletedSablonIds = new Set();
 let _rtMuted = false;
 export function muteRealtime() { _rtMuted = true; }
 export function unmuteRealtime() { setTimeout(() => { _rtMuted = false; }, 800); }
@@ -229,6 +230,12 @@ export function startRealtime() {
       else if (p.eventType === 'UPDATE') { const i = _db.dosyalar.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.dosyalar[i] = rowToDosya(p.new); notify(); } }
       else if (p.eventType === 'DELETE') { _db.dosyalar = _db.dosyalar.filter(x => x.id !== p.old.id); notify(); }
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'sablonlar' }, p => {
+      if (_rtMuted) return;
+      if (p.eventType === 'INSERT') { const s = rowToSablon(p.new); if (_deletedSablonIds.has(s.id)) return; if (!_db.sablonlar.find(x => x.id === s.id)) { _db.sablonlar.push(s); notify(); } }
+      else if (p.eventType === 'UPDATE') { if (_deletedSablonIds.has(p.new.id)) return; const i = _db.sablonlar.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.sablonlar[i] = rowToSablon(p.new); notify(); } }
+      else if (p.eventType === 'DELETE') { _deletedSablonIds.add(p.old.id); _db.sablonlar = _db.sablonlar.filter(x => x.id !== p.old.id); notify(); }
+    })
     .subscribe();
 }
 
@@ -350,6 +357,7 @@ export async function updateSablon(id, changes) {
 }
 
 export async function deleteSablon(id) {
+  _deletedSablonIds.add(id);
   _db.sablonlar = _db.sablonlar.filter(x => x.id !== id);
   notify();
   await supabase.from('sablonlar').delete().eq('id', id);
@@ -401,8 +409,8 @@ export async function uploadFileToStorage(file, firmaId, klasor, ekleyenId, ekle
   
   // dosyalar tablosuna kaydet
   const row = {
-    firma_id: firmaId, ad: file.name, klasor: klasor || 'Genel',
-    boyut: fmtBoyut(file.size), storage_path: path,
+    firma_id: firmaId, ad: file.name, klasor: klasor || null,
+    boyut: fmtBoyut(file.size), storage_path: path, klasor: klasor || null,
     ekleyen_id: ekleyenId || null, ekleyen: ekleyen || null,
     is_klasor: false, is_pin: false,
   };
