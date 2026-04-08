@@ -22,6 +22,32 @@ export function muteRealtime() { _rtMuted = true; }
 export function unmuteRealtime() { setTimeout(() => { _rtMuted = false; }, 800); }
 let _rtChannel = null;
 
+/* ═ Masaüstü / Mobil Push Bildirim ═ */
+let _notifPermission = typeof Notification !== 'undefined' ? Notification.permission : 'denied';
+export async function requestNotifPermission() {
+  if (typeof Notification === 'undefined') return false;
+  if (Notification.permission === 'granted') { _notifPermission = 'granted'; return true; }
+  if (Notification.permission === 'denied') return false;
+  const perm = await Notification.requestPermission();
+  _notifPermission = perm;
+  return perm === 'granted';
+}
+function _showDesktopNotif(mesaj) {
+  if (_notifPermission !== 'granted') return;
+  if (document.visibilityState === 'visible') return; // Uygulama açıksa gösterme, in-app toast yeterli
+  try {
+    const n = new Notification('Mono Capital', {
+      body: mesaj,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: 'mc-' + Date.now(),
+      renotify: true,
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+    setTimeout(() => n.close(), 8000);
+  } catch(e) { console.log('Notification error:', e); }
+}
+
 let _notifyTimer = null;
 export const notify = () => {
   if (_notifyTimer) clearTimeout(_notifyTimer);
@@ -160,8 +186,12 @@ export async function boot(userId) {
     }
 
     const [firmR, sabR, talR, bilR, dosR, fkR] = await Promise.all([
-      supabase.from('firmalar').select('*').in('office_user_id', ekipIds),
-      supabase.from('sablonlar').select('*').in('office_user_id', ekipIds),
+      profil?.rol === 'client'
+        ? supabase.from('firmalar').select('*')
+        : supabase.from('firmalar').select('*').in('office_user_id', ekipIds),
+      profil?.rol === 'client'
+        ? supabase.from('sablonlar').select('*')
+        : supabase.from('sablonlar').select('*').in('office_user_id', ekipIds),
       supabase.from('talepler').select('*').order('created_at', { ascending: false }),
       supabase.from('bildirimler').select('*').order('created_at', { ascending: false }),
       supabase.from('dosyalar').select('*'),
@@ -215,13 +245,14 @@ export function startRealtime() {
         const tempIdx = _db.talepler.findIndex(x => typeof x.id === 'string' && x.id.startsWith('t') && x.sablonAd === t.sablonAd && (x.odId === t.odId || x.olusturanId === t.olusturanId));
         if (tempIdx >= 0) { _db.talepler[tempIdx] = t; } else { _db.talepler.unshift(t); }
         notify();
+        _showDesktopNotif('Yeni görev: ' + (t.sablonAd || 'Görev'));
       }
       else if (p.eventType === 'UPDATE') { if (_deletedIds.has(p.new.id)) return; const i = _db.talepler.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.talepler[i] = rowToTalep(p.new); notify(); } }
       else if (p.eventType === 'DELETE') { _deletedIds.add(p.old.id); _db.talepler = _db.talepler.filter(x => x.id !== p.old.id); notify(); }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bildirimler' }, p => {
       if (_rtMuted) return;
-      if (p.eventType === 'INSERT') { const b = rowToBildirim(p.new); if (!_db.bildirimler.find(x => x.id === b.id)) { _db.bildirimler.unshift(b); notify(); } }
+      if (p.eventType === 'INSERT') { const b = rowToBildirim(p.new); if (!_db.bildirimler.find(x => x.id === b.id)) { _db.bildirimler.unshift(b); notify(); _showDesktopNotif(b.mesaj); } }
       else if (p.eventType === 'UPDATE') { const i = _db.bildirimler.findIndex(x => x.id === p.new.id); if (i >= 0) { _db.bildirimler[i] = rowToBildirim(p.new); notify(); } }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'dosyalar' }, p => {
