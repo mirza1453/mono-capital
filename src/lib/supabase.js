@@ -425,7 +425,8 @@ export async function markAllBildirimOkundu(hedef, firmaId) {
 export async function uploadFileToStorage(file, firmaId, klasor, ekleyenId, ekleyen) {
   const ts = Date.now();
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = klasor ? `${firmaId}/${klasor}/${ts}_${safeName}` : `${firmaId}/${ts}_${safeName}`;
+  const safeKlasor = klasor ? klasor.replace(/[^a-zA-Z0-9._\-\/]/g, '_') : null;
+  const path = safeKlasor ? `${firmaId}/${safeKlasor}/${ts}_${safeName}` : `${firmaId}/${ts}_${safeName}`;
   
   // Supabase Storage'a yükle
   const { data: upData, error: upError } = await supabase.storage.from('dosyalar').upload(path, file);

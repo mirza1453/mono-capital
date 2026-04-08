@@ -89,7 +89,7 @@ async function syncFirmaInsert(f) {
 }
 
 async function syncSablonSave(s, isNew) {
-  const row = { ad: s.ad, alanlar: s.alanlar || [], kontrol_sablonu: s.kontrolSablonu || [], aciklama_sablonu: s.aciklamaSablonu || '', bildirim_sablonu: s.bildirimSablonu || '', baslik_format: s.baslikFormat, baslik_sep: s.baslikSep, office_user_id: s.officeUserId };
+  const row = { ad: s.ad, alanlar: s.alanlar || [], kontrol_sablonu: s.kontrolSablonu || [], aciklama_sablonu: s.aciklamaSablonu || '', bildirim_sablonu: s.bildirimSablonu || '', baslik_format: s.baslikFormat, baslik_sep: s.baslikSep, office_user_id: s.officeUserId, sadece_musavir: s.sadeceMusavir || false };
   if (isNew) {
     const { data, error } = await supabase.from('sablonlar').insert(row).select().single();
     if (error) console.error('[SYNC] INSERT sablon ERROR:', error);
