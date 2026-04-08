@@ -123,13 +123,13 @@ const rowToSablon = r => ({
   id: r.id, ad: r.ad, alanlar: r.alanlar || [],
   kontrolSablonu: r.kontrol_sablonu || [], aciklamaSablonu: r.aciklama_sablonu || '',
   bildirimSablonu: r.bildirim_sablonu || '', baslikFormat: r.baslik_format || ['firmaAd', 'sablonAd'],
-  baslikSep: r.baslik_sep || ' • ', officeUserId: r.office_user_id,
+  baslikSep: r.baslik_sep || ' • ', officeUserId: r.office_user_id, sadeceMusavir: r.sadece_musavir || false,
 });
 const sablonToRow = s => ({
   ad: s.ad, alanlar: s.alanlar || [], kontrol_sablonu: s.kontrolSablonu || [],
   aciklama_sablonu: s.aciklamaSablonu || '', bildirim_sablonu: s.bildirimSablonu || '',
   baslik_format: s.baslikFormat || ['firmaAd', 'sablonAd'], baslik_sep: s.baslikSep || ' • ',
-  office_user_id: s.officeUserId,
+  office_user_id: s.officeUserId, sadece_musavir: s.sadeceMusavir || false,
 });
 
 const rowToBildirim = r => ({
@@ -382,7 +382,7 @@ export async function updateSablon(id, changes) {
   const i = _db.sablonlar.findIndex(x => x.id === id);
   if (i >= 0) { Object.assign(_db.sablonlar[i], changes); notify(); }
   const row = {};
-  const map = { ad: 'ad', alanlar: 'alanlar', kontrolSablonu: 'kontrol_sablonu', aciklamaSablonu: 'aciklama_sablonu', bildirimSablonu: 'bildirim_sablonu', baslikFormat: 'baslik_format', baslikSep: 'baslik_sep' };
+  const map = { ad: 'ad', alanlar: 'alanlar', kontrolSablonu: 'kontrol_sablonu', aciklamaSablonu: 'aciklama_sablonu', bildirimSablonu: 'bildirim_sablonu', baslikFormat: 'baslik_format', baslikSep: 'baslik_sep', sadeceMusavir: 'sadece_musavir' };
   Object.keys(map).forEach(k => { if (k in changes) row[map[k]] = changes[k]; });
   if (Object.keys(row).length) await supabase.from('sablonlar').update(row).eq('id', id);
 }
