@@ -416,10 +416,7 @@ function OfficePanel({user,onCikis}){
         <div style={{height:60}}/>
       </div>}
     {/* Görevler padding responsive */}
-<<<<<<< HEAD
     </div>
-=======
->>>>>>> 6c908f8283d8693c16b8acbd638e2415b27698e8
     </div>
 
     {/* FAB — only mobile */}
