@@ -172,11 +172,11 @@ function FirmaSecim({user,firmalar,onSec,onCikis}){return <div style={{minHeight
 /* MÜŞAVİR PANELİ                 */
 /* ═══════════════════════════ */
 function OfficePanel({user,onCikis}){
-  const db=useDB(sheet==="gd"||sheet==="dosyalar");
-  const isDesktop=useIsDesktop(900);
   const[tab,sTab]=useState("gorevler");
   const[sheet,sSh]=useState(null);
   const[sel,sSel]=useState(null);
+  const db=useDB(sheet==="gd"||sheet==="dosyalar");
+  const isDesktop=useIsDesktop(900);
   const[oF,sOF]=useState({});
   const[drawer,sDr]=useState(false);
   const[drawerPage,sDrPage]=useState(null); // firmalar, taslaklar, ekip
@@ -435,7 +435,7 @@ return <div ref={kanbanRef} style={{display:"flex",gap:12,overflowX:"auto",paddi
 /* ═══════════════════════════ */
 /* MÜŞTERİ PANELİ              */
 /* ═══════════════════════════ */
-function ClientPanel({user,onCikis}){const db=useDB(!!sel);const[tab,sTab]=useState("panel");const[sheet,sSh]=useState(null);const[sel,sSel]=useState(null);const[firma,sFirma]=useState(null);const[fil,sFil]=useState("tumu");const bildirimAcik=db.mpirofil?.bildirimAcik!==false;const[cikisOnay,sCikisOnay]=useState(false);
+function ClientPanel({user,onCikis}){const[tab,sTab]=useState("panel");const[sheet,sSh]=useState(null);const[sel,sSel]=useState(null);const db=useDB(!!sel);const[firma,sFirma]=useState(null);const[fil,sFil]=useState("tumu");const bildirimAcik=db.mpirofil?.bildirimAcik!==false;const[cikisOnay,sCikisOnay]=useState(false);
   _toastTap=(tid)=>{const talep=db.talepler.find(t=>t.id===tid);if(talep){sSel(talep);sSh(null);}};const myFirmaIds=(db.firma_kullanici||[]).filter(fk=>fk.user_id===user.id).map(fk=>fk.firma_id);const islemF=db.firmalar.filter(f=>myFirmaIds.includes(f.id));
   const bt=firma?db.talepler.filter(t=>!t.arsiv&&t.firmaId===firma.id&&t.mukellefGorsun!==false):[];
   const ft=fil==="tumu"?bt:bt.filter(t=>t.durum===fil);
