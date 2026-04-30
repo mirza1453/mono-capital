@@ -547,6 +547,14 @@ export async function createClientUser(email, password, ad, firmaId) {
 
 export async function createEkipUyesi(email, password, ad, anaFirma) {
   console.log('[AUTH] createEkipUyesi:', email, ad, anaFirma);
+  const { data: existing } = await supabase.from('profiles').select('id').eq('eposta', email).maybeSingle();
+  if (existing) {
+    await supabase.from('profiles').update({ ana_firma: anaFirma, rol: 'office', ad }).eq('id', existing.id);
+    const yeni = { id: existing.id, ad, eposta: email, rol: 'office', renk: null, anaFirma, bildirimAcik: true };
+    if (!_db.ekip.find(x => x.id === existing.id)) { _db.ekip.push(yeni); } else { Object.assign(_db.ekip.find(x => x.id === existing.id), yeni); }
+    notify();
+    return { id: existing.id, existing: true };
+  }
   const { data, error } = await _adminClient.auth.signUp({ email, password, options: { data: { ad, rol: 'office', ana_firma: anaFirma } } });
   console.log('[AUTH] signUp result:', JSON.stringify({ data, error }, null, 2));
   if (error) return { error: error.message };
